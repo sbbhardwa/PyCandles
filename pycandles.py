@@ -51,14 +51,14 @@ class StockCandlestickChart:
         self.df = pd.DataFrame.from_dict(time_series, orient='index')
         self.df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
 
-        # Convert index to datetime and filter data from the last 6 hours
+        # Convert index to datetime and filter data from the last 3 hours
         self.df.index = pd.to_datetime(self.df.index)
-        three_hours_ago = datetime.now() - timedelta(hours=6)
+        three_hours_ago = datetime.now() - timedelta(hours=3)
         self.df = self.df[self.df.index >= three_hours_ago]
 
         # If the dataframe is still empty, extend the timeframe
         if self.df.empty:
-            print(f"Not enough data for the last 6 hours for {self.stock_symbol}. Extending timeframe to 1 day.")
+            print(f"Not enough data for the last 3 hours for {self.stock_symbol}. Extending timeframe to 1 day.")
             one_day_ago = datetime.now() - timedelta(days=1)
             self.df = pd.DataFrame.from_dict(time_series, orient='index')
             self.df.index = pd.to_datetime(self.df.index)
