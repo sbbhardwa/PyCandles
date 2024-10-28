@@ -267,7 +267,7 @@ class PyBlogger:
 
         # Save blog content to a file
         blog_file = os.path.join(self.directory, f"blog_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md")
-        with open(blog_file, 'w') as file:
+        with open(blog_file, 'w',encoding='charmap', errors='ignore') as file:
             file.write(self.blog_content)
         print(f"Blog content saved successfully to {blog_file}")
 
