@@ -25,54 +25,43 @@ class StockCandlestickChart:
         self.df = None
 
     def fetch_data(self):
-        # Fetch the intraday data from Alpha Vantage API
+        # Fetch the intraday data from Financial Modeling Prep API
         print('Stock Symbol to be called is - ' + self.stock_symbol)
-        url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={self.stock_symbol}&interval={self.interval}&apikey={self.api_key}'
+        # Get current date in 'YYYY-MM-DD' format
+        current_date = datetime.now().strftime('%Y-%m-%d')
+
+        # Updated URL with current date for both start and end date
+        url = f'https://financialmodelingprep.com/api/v3/historical-chart/{self.interval}/{self.stock_symbol}?from={current_date}&to={current_date}&apikey={self.api_key}'
+
         response = requests.get(url)
         if response.status_code != 200:
-            raise ValueError(f"Error fetching data from Alpha Vantage API: {response.status_code}")
+            raise ValueError(f"Error fetching data from Financial Modeling Prep API: {response.status_code}")
+
         data = response.json()
 
-        # Check if the response contains an error message
-        if "Note" in data:
-            raise ValueError("API call frequency limit reached. Please wait and try again.")
-        if "Error Message" in data:
-            raise ValueError(f"Error message from Alpha Vantage API: {data['Error Message']}")
+        # Ensure data is a list
+        if not isinstance(data, list) or not data:
+            raise ValueError(f"No valid data returned for symbol {self.stock_symbol} with interval {self.interval}")
 
-        # Extract the time series data based on the provided interval
-        time_series_key = f'Time Series ({self.interval})'
-        time_series = data.get(time_series_key, {})
+        # Convert the list of dictionaries into a DataFrame
+        self.df = pd.DataFrame(data)
 
-        # Check if the data is empty
-        if not time_series:
-            raise ValueError(f"No data found for symbol {self.stock_symbol} with interval {self.interval}")
+        # Convert Date column to datetime and set as index
+        self.df['date'] = pd.to_datetime(self.df['date'])
+        self.df.set_index('date', inplace=True)
 
-        # Transform the data into a DataFrame
-        self.df = pd.DataFrame.from_dict(time_series, orient='index')
-        self.df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+        # Drop rows with NaN values
+        self.df.dropna(inplace=True)
 
-        # Convert index to datetime and filter data from the last 3 hours
-        self.df.index = pd.to_datetime(self.df.index)
-        three_hours_ago = datetime.now() - timedelta(hours=3)
-        self.df = self.df[self.df.index >= three_hours_ago]
-
-        # If the dataframe is still empty, extend the timeframe
-        if self.df.empty:
-            print(f"Not enough data for the last 3 hours for {self.stock_symbol}. Extending timeframe to 1 day.")
-            one_day_ago = datetime.now() - timedelta(days=1)
-            self.df = pd.DataFrame.from_dict(time_series, orient='index')
-            self.df.index = pd.to_datetime(self.df.index)
-            self.df = self.df[self.df.index >= one_day_ago]
+        # Convert necessary columns to numeric type
+        self.df['open'] = pd.to_numeric(self.df['open'], errors='coerce')
+        self.df['high'] = pd.to_numeric(self.df['high'], errors='coerce')
+        self.df['low'] = pd.to_numeric(self.df['low'], errors='coerce')
+        self.df['close'] = pd.to_numeric(self.df['close'], errors='coerce')
+        self.df['volume'] = pd.to_numeric(self.df['volume'], errors='coerce')
 
         # Sort it to plot chronologically
         self.df = self.df.sort_index()
-
-        # Convert necessary columns to numeric type
-        self.df['Open'] = pd.to_numeric(self.df['Open'], errors='coerce')
-        self.df['High'] = pd.to_numeric(self.df['High'], errors='coerce')
-        self.df['Low'] = pd.to_numeric(self.df['Low'], errors='coerce')
-        self.df['Close'] = pd.to_numeric(self.df['Close'], errors='coerce')
-        self.df['Volume'] = pd.to_numeric(self.df['Volume'], errors='coerce')
 
         # Drop rows with NaN values
         self.df.dropna(inplace=True)
@@ -80,11 +69,11 @@ class StockCandlestickChart:
         # Resample data to ensure we have consistent intervals (if required)
         if not self.df.empty:
             self.df = self.df.resample('5T').agg({
-                'Open': 'first',
-                'High': 'max',
-                'Low': 'min',
-                'Close': 'last',
-                'Volume': 'sum'
+                'open': 'first',
+                'high': 'max',
+                'low': 'min',
+                'close': 'last',
+                'volume': 'sum'
             }).dropna()
 
     def plot_and_save_chart(self):
@@ -106,13 +95,15 @@ class StockCandlestickChart:
 
         # Plotting the candlestick chart and saving it to a file
         try:
-            mpf.plot(self.df, type='candle', style='charles', title=f'{self.stock_symbol} {self.interval} Candlestick Chart (Last 3 Hours)',
+            mpf.plot(self.df, type='candle', style='charles',
+                     title=f'{self.stock_symbol} {self.interval} Candlestick Chart',
                      ylabel='Price (USD)', volume=True, ylabel_lower='Volume', savefig=save_path)
             print(f"Chart saved successfully to {save_path}")
         except Exception as e:
             raise ValueError(f"Failed to plot and save chart for {self.stock_symbol}: {e}")
 
         return save_path
+
 
 class PyBlogger:
     def __init__(self, directory, logo_path):
@@ -121,6 +112,7 @@ class PyBlogger:
         self.logo_path = logo_path
         self.blog_content = ""
         self.chart_paths = []
+        self.df = pd.DataFrame()  # Initialize df as an empty DataFrame
 
     def add_chart_path(self, chart_path):
         # Add chart path to the list
@@ -196,9 +188,9 @@ class PyBlogger:
 
 
     def write_blog(self, stock_symbols, groq_key, medium_key):
-        # Fetch news for each stock symbol for the last 3 hours
+        # Fetch news for each stock symbol for the last 8 hours
         current_time = datetime.now()
-        three_hours_ago = current_time - timedelta(hours=3)
+        three_hours_ago = current_time - timedelta(hours=8)
         _from = three_hours_ago.strftime('%Y-%m-%d')
         _to = current_time.strftime('%Y-%m-%d')
 
@@ -373,7 +365,7 @@ if __name__ == "__main__":
             with open(config_file_path, 'r') as config_file:
                 config_lines = config_file.readlines()
                 config_values = {line.split(': ')[0].strip(): line.split(': ')[1].strip() for line in config_lines}
-                api_key = config_values.get("Enter your Alpha Vantage API key")
+                api_key = config_values.get("Enter your financialmodelingprep API key")
                 interval = config_values.get("Enter the interval (e.g., 5min, 15min, 30min)")
                 save_location = config_values.get("Enter the location to save the charts")
                 groq_key = config_values.get("Enter your Groq API key")
@@ -394,7 +386,7 @@ if __name__ == "__main__":
         stock_symbols_input = input("Enter a list of stock symbols along with keywords (e.g., PLTR-Palantir) separated by commas: ").split(',')
         stock_symbols = [symbol.split('-')[0].strip().upper() for symbol in stock_symbols_input]
         stock_keywords = {symbol.split('-')[0].strip().upper(): symbol.split('-')[1].strip() for symbol in stock_symbols_input}
-        api_key = input("Enter your Alpha Vantage API key: ")
+        api_key = input("Enter your financialmodelingprep API key: ")
         interval = input("Enter the interval (e.g., 5min, 15min, 30min): ")
         save_location = input("Enter the location to save the charts: ").strip()
         groq_key = input("Enter your Groq API key: ")
@@ -413,6 +405,7 @@ if __name__ == "__main__":
         try:
             time.sleep(12)  # Adding delay to avoid hitting API limits
             stock_chart.fetch_data()
+
             chart_path = stock_chart.plot_and_save_chart()
             py_blogger.add_chart_path(chart_path)
         except Exception as e:
