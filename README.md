@@ -4,7 +4,8 @@
 **PyCandles**  is an innovative financial market analysis tool that leverages advanced AI capabilities to help traders make better decisions. By combining candlestick chart analysis with cutting-edge natural language processing, PyCandles provides traders with a holistic view of market conditions. This tool uses the powerful Llama LLM model, integrated through Groq, to analyze both chart patterns and financial news headlines, offering traders clear insights for buying, holding, or selling assets. PyCandles streamlines the decision-making process by automating data collection, chart visualization, and sentiment analysis, all within one unified solution.
 
 ### Detailed user guide and program flow - 
-[User Guide PyCandles.pdf](https://github.com/user-attachments/files/17534872/User.Guide.PyCandles.pdf)
+
+[User Guide PyCandles v1.pdf](https://github.com/user-attachments/files/17547224/User.Guide.PyCandles.v1.pdf)
 
 
 ### Business Purpose
